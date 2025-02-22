@@ -1,20 +1,21 @@
-using System;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
 
 public class PlayerController : MonoBehaviour
 {
-    [SerializeField] public float speed;
-    [SerializeField] public float jumpForce;
-    [SerializeField] public float mouseSensitivity;
-
-    private bool moving;
+    [SerializeField] public float speed = 5f;
+    [SerializeField] public float jumpForce = 3f;
+    [SerializeField] public float mouseSensitivity = 0.1f;
+    [SerializeField] public float objectDistanceDetection = 1f;
+    
     private Rigidbody _rb;
-    private Vector2 _moveInput;
     public CinemachineCamera _camera;
-
+    
+    private bool moving;
+    public bool interacting;
+    private Vector2 _moveInput;
+    public GameObject _objectObserved;
     // Verifica si el jugador está en el suelo
     private bool IsGrounded() { return Physics.Raycast(transform.position, Vector3.down, 1.1f); }
 
@@ -28,13 +29,14 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    
     // Recibe entrada de movimiento del jugador
     public void onMove(InputAction.CallbackContext context)
     {
         var value = context.ReadValue<Vector2>();
         moving = true;
         _moveInput = value;
-        Debug.Log(_moveInput);
+        // Debug.Log(_moveInput);
     }
 
     // Aplica el salto si el jugador está en el suelo
@@ -55,6 +57,48 @@ public class PlayerController : MonoBehaviour
         newRotationX = Mathf.Clamp(newRotationX, -80f, 80f);
 
         _camera.transform.localRotation = Quaternion.Euler(newRotationX, 90f, 0f);
+        
+        // Raycast desde la cámara hacia adelante
+        RaycastHit hit;
+        if (Physics.Raycast(_camera.transform.position, _camera.transform.forward, out hit, objectDistanceDetection)) // objectDistanceDetection es la distancia máxima para el raycast
+        {
+            // Si el raycast golpea algo, guardamos el objeto en _objectObserved
+            _objectObserved = hit.collider.gameObject;
+
+            // Aquí puedes agregar lógica para interactuar con el objeto si lo deseas
+            // Debug.Log("Objeto observado: " + _objectObserved.name);
+        }
+        else
+        {
+            // Si no está mirando a nada, se limpia la referencia
+            _objectObserved = null;
+            // Debug.Log("No hay ningún objeto");
+        }
+    }
+    public void Interact(InputAction.CallbackContext context)
+    {
+        
+        // Si la acción está en el estado "Performed" (tecla presionada)
+        if (context.started) 
+        {
+            if (_objectObserved)
+            {
+                interacting = true;
+                if (_objectObserved.CompareTag("Button"))
+                {
+                    _objectObserved.GetComponent<ButtonInteraction>().PressButton();
+                }
+            }
+
+            
+        }
+    
+        // Si la acción está en el estado "Canceled" (tecla soltada)
+        if (context.canceled) 
+        {
+            interacting = false;
+          
+        }
     }
 
     private void Awake()
