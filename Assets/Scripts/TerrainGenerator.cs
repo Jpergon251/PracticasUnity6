@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
-using Unity.AI.Navigation; // Para el NavMesh
+using Unity.AI.Navigation;
+using Random = UnityEngine.Random; // Para el NavMesh
 
 public class TerrainGenerator : MonoBehaviour
 {
@@ -8,6 +10,7 @@ public class TerrainGenerator : MonoBehaviour
     [SerializeField] private float scale = 20f;  
     [SerializeField] private float heightMultiplier = 5f; 
     [SerializeField] private Material terrainMaterial;
+    [SerializeField] private GameObject terrainPrefab;
     
     private NavMeshSurface navMeshSurface;
     private GameObject currentTerrain;  // Referencia al terreno actual
@@ -18,8 +21,57 @@ public class TerrainGenerator : MonoBehaviour
 
     public void mainAction()
     {
-        GenerateTerrain();
+        ModifyTerrain();
     }
+
+    private void ModifyTerrain()
+    {
+        if (terrainPrefab == null)
+        {
+            terrainPrefab = GameObject.FindGameObjectWithTag("Ground");
+            if (terrainPrefab == null)
+            {
+                Debug.LogError("No se encontró el terreno. Asegúrate de asignarlo en el Inspector.");
+                return;
+            }
+        }
+
+        // Obtener los componentes del terreno
+        MeshFilter meshFilter = terrainPrefab.GetComponent<MeshFilter>();
+        MeshCollider meshCollider = terrainPrefab.GetComponent<MeshCollider>();
+
+        if (meshFilter == null || meshFilter.sharedMesh == null)
+        {
+            Debug.LogError("El terreno no tiene una malla válida.");
+            return;
+        }
+
+        Mesh mesh = meshFilter.sharedMesh;
+        Vector3[] vertices = mesh.vertices;
+
+        // Modificar la altura de los vértices según el bioma
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            Vector3 vertex = vertices[i];
+            float y = GenerateHeight((int)vertex.x, (int)vertex.z);  // Generar altura con el mismo método
+            vertices[i] = new Vector3(vertex.x, y, vertex.z);
+        }
+
+        // Asignar la nueva geometría a la malla
+        mesh.vertices = vertices;
+        mesh.RecalculateNormals();
+        meshCollider.sharedMesh = mesh;
+
+        // Actualizar el NavMesh si existe
+        NavMeshSurface navMeshSurface = terrainPrefab.GetComponent<NavMeshSurface>();
+        if (navMeshSurface != null)
+        {
+            navMeshSurface.BuildNavMesh();
+        }
+
+        Debug.Log("Terreno modificado exitosamente.");
+    }
+
     
     private void GenerateTerrain()
     {
@@ -120,4 +172,13 @@ public class TerrainGenerator : MonoBehaviour
 
         return Mathf.Clamp(y, 0, heightMultiplier * 2);
     }
+
+    /*private void OnDrawGizmos()
+    {
+        if (!Application.isPlaying)
+        {
+            return;
+        }
+        GenerateTerrain();
+    }*/
 }
