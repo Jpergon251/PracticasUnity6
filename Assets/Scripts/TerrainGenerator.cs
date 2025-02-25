@@ -21,7 +21,7 @@ public class TerrainGenerator : MonoBehaviour
 
     public void mainAction()
     {
-        ModifyTerrain();
+        GenerateTerrain();
     }
 
     private void ModifyTerrain()
